@@ -4,6 +4,8 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { FanAccessory } from './accessories/FanAccessory';
 import { HeaterAccessory } from './accessories/HeaterAccessory';
 import { HumidifierAccessory } from './accessories/HumidifierAccessory';
+import { CoolerAccessory } from './accessories/CoolerAccessory';
+import { DehumidifierAccessory } from './accessories/DehumidifierAccessory';
 import DreoAPI from './DreoAPI';
 
 /**
@@ -160,8 +162,10 @@ export class DreoPlatform implements DynamicPlatformPlugin {
         'DR-HAP',  // Air Purifier
         'DR-HSH',  // Heater
         'WH',      // Heater
-        'DR-HAC',  // Air Conditioner
+        'DR-HAC',  // Air Conditioner / Hybrid Air Cooler
+        'DR-HEC',  // Hybrid Evaporative Cooler
         'DR-HHM',  // Humidifier
+        'DR-HDM',  // Dehumidifier
       ];
 
       // Find the matching prefix
@@ -185,17 +189,24 @@ export class DreoPlatform implements DynamicPlatformPlugin {
           accessory.category = this.api.hap.Categories.AIR_HEATER;
           new HeaterAccessory(this, accessory, state);
           break;
+
         case 'DR-HAC':
-          // Air Conditioner
-          // new CoolerAccessory(this, accessory, state);
-          this.log.info('Air Conditioner not yet supported');
-          modelPrefix = undefined;
+        case 'DR-HEC':
+          // Air Conditioner / Hybrid Air Cooler / Hybrid Evaporative Cooler
+          accessory.category = this.api.hap.Categories.AIR_CONDITIONER;
+          new CoolerAccessory(this, accessory, state);
           break;
 
         case 'DR-HHM':
           // Humidifier
           accessory.category = this.api.hap.Categories.AIR_HUMIDIFIER;
           new HumidifierAccessory(this, accessory, state);
+          break;
+
+        case 'DR-HDM':
+          // Dehumidifier
+          accessory.category = this.api.hap.Categories.AIR_HUMIDIFIER;
+          new DehumidifierAccessory(this, accessory, state);
           break;
 
         default:
