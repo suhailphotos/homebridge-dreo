@@ -136,30 +136,37 @@ export class CoolerAccessory extends BaseAccessory {
     return modeMap[mode] || 0;
   }
 
-  async setActive(value) {
-    this.currState.on = value;
-    const command = value ? 'poweron' : 'poweroff';
-    await this.sendCommand(command, value ? 1 : 0);
+  setActive(value) {
+    this.platform.log.debug('Triggered SET Active:', value);
+    if (this.currState.on !== Boolean(value)) {
+      this.platform.webHelper.control(this.sn, {
+        poweron: Boolean(value),
+      });
+      this.currState.on = Boolean(value);
+    }
   }
 
-  async getActive() {
-    return this.currState.on ? 1 : 0;
+  getActive() {
+    return this.currState.on;
   }
 
-  async getCurrentTemperature() {
+  getCurrentTemperature() {
     return this.currState.currentTemperature;
   }
 
-  async setTargetTemperature(value) {
+  setTargetTemperature(value) {
+    this.platform.log.debug('Setting target temperature:', value);
+    this.platform.webHelper.control(this.sn, {
+      tartemp: value,
+    });
     this.currState.targetTemperature = value;
-    await this.sendCommand('tartemp', value);
   }
 
-  async getTargetTemperature() {
+  getTargetTemperature() {
     return this.currState.targetTemperature;
   }
 
-  async getCurrentHeaterCoolerState() {
+  getCurrentHeaterCoolerState() {
     if (!this.currState.on) {
       return this.platform.Characteristic.CurrentHeaterCoolerState.INACTIVE;
     }
@@ -169,7 +176,7 @@ export class CoolerAccessory extends BaseAccessory {
     return this.platform.Characteristic.CurrentHeaterCoolerState.COOLING;
   }
 
-  async setTargetHeaterCoolerState(value) {
+  setTargetHeaterCoolerState(value) {
     let newMode = 'cool';
     if (value === this.platform.Characteristic.TargetHeaterCoolerState.HEAT) {
       newMode = 'heat';
@@ -178,50 +185,44 @@ export class CoolerAccessory extends BaseAccessory {
     ) {
       newMode = 'cool'; // Default to cool for auto
     }
+    this.platform.log.debug('Setting HVAC mode:', newMode);
+    this.platform.webHelper.control(this.sn, {
+      hvacmode: this.mapModeToHvac(newMode),
+    });
     this.currState.mode = newMode;
-    await this.sendCommand('hvacmode', this.mapModeToHvac(newMode));
   }
 
-  async getTargetHeaterCoolerState() {
+  getTargetHeaterCoolerState() {
     if (this.currState.mode === 'heat') {
       return this.platform.Characteristic.TargetHeaterCoolerState.HEAT;
     }
     return this.platform.Characteristic.TargetHeaterCoolerState.COOL;
   }
 
-  async setRotationSpeed(value) {
+  setRotationSpeed(value) {
     const speed = Math.ceil((value / 100) * this.currState.maxSpeed);
-    this.currState.speed = speed;
-    await this.sendCommand('speed', speed);
+    if (speed > 0 && speed !== this.currState.speed) {
+      this.platform.log.debug('Setting fan speed:', speed);
+      this.platform.webHelper.control(this.sn, {
+        speed: speed,
+      });
+      this.currState.speed = speed;
+    }
   }
 
-  async getRotationSpeed() {
+  getRotationSpeed() {
     return (this.currState.speed / this.currState.maxSpeed) * 100;
   }
 
-  async setSwingMode(value) {
+  setSwingMode(value) {
+    this.platform.log.debug('Setting swing mode:', value);
+    this.platform.webHelper.control(this.sn, {
+      swing: Number(value),
+    });
     this.currState.swing = value === 1;
-    await this.sendCommand('swing', value);
   }
 
-  async getSwingMode() {
+  getSwingMode() {
     return this.currState.swing ? 1 : 0;
-  }
-
-  private async sendCommand(directive: string, value: number | boolean) {
-    this.platform.log.debug(
-      `Sending command to ${this.accessory.displayName}: ${directive}=${value}`,
-    );
-    try {
-      await this.platform.webHelper.sendCommand(
-        this.accessory.context.device.sn,
-        directive,
-        value,
-      );
-    } catch (error) {
-      this.platform.log.error(
-        `Error sending command: ${error.message}`,
-      );
-    }
   }
 }
