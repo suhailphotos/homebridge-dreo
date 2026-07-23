@@ -441,7 +441,10 @@ export class FanAccessory extends BaseAccessory {
   private configureModeSwitches() {
     this.removeEmbeddedModeSwitches();
 
-    if (!this.platform.config.exposeFanModeSwitches) {
+    if (
+      !this.platform.config.exposeAdvancedFanControls &&
+      !this.platform.config.exposeFanModeSwitches
+    ) {
       this.modeServices.clear();
       return;
     }
@@ -458,14 +461,14 @@ export class FanAccessory extends BaseAccessory {
         ) ||
         modeAccessory.addService(
           this.platform.Service.Switch,
-          mode.name,
+          modeAccessory.displayName,
           mode.subtype,
         );
 
       service
         .setCharacteristic(
           this.platform.Characteristic.Name,
-          mode.name,
+          modeAccessory.displayName,
         )
         .getCharacteristic(this.platform.Characteristic.On)
         .onSet((value) => this.setDetailedMode(mode.value, value))
@@ -494,8 +497,10 @@ export class FanAccessory extends BaseAccessory {
   }
 
   private configurePreferenceSwitches(state) {
-    const exposePreferences =
-      this.platform.config.exposeFanPreferences || false;
+    const exposePreferences = Boolean(
+      this.platform.config.exposeAdvancedFanControls ||
+      this.platform.config.exposeFanPreferences,
+    );
     this.removeSwitch('dreo-display-auto-off');
     this.removeSwitch('dreo-panel-sound');
 

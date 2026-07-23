@@ -56,17 +56,23 @@
         "default": false,
         "description": "Expose fan oscillation as an additional switch for Home clients that do not display Fanv2 Swing Mode."
       },
+      "exposeAdvancedFanControls": {
+        "title": "Expose Advanced Fan Controls",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose supported Dreo fan modes and preferences as separate, clearly named switch accessories. Leave disabled for the clean native HomeKit fan interface."
+      },
       "exposeFanModeSwitches": {
         "title": "Expose Named Fan Modes",
         "type": "boolean",
         "default": false,
-        "description": "Expose Normal, Natural, Sleep, and Auto as mutually synchronized switches when the fan reports named modes."
+        "description": "Legacy advanced option: expose only Normal, Natural, Sleep, and Auto as separate mutually synchronized switches."
       },
       "exposeFanPreferences": {
         "title": "Expose Fan Preferences",
         "type": "boolean",
         "default": false,
-        "description": "Expose supported Dreo-only preferences, such as Display Auto Off and Panel Sound, as switches."
+        "description": "Legacy advanced option: expose only supported Dreo preferences, such as Display Auto Off and Panel Sound, as separate switches."
       }
     }
   },
@@ -97,6 +103,15 @@
     {
       "type": "fieldset",
       "title": "Additional Fan Controls",
+      "items": [
+        "exposeAdvancedFanControls"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Advanced Fan Control Selection",
+      "expandable": true,
+      "expanded": false,
       "items": [
         "exposeFanModeSwitches",
         "exposeFanPreferences"
