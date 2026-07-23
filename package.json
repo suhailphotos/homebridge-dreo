@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Dreo Enhanced",
   "name": "@simoore/homebridge-dreo-enhanced",
-  "version": "5.1.4-vortex.3",
+  "version": "5.1.4-vortex.4",
   "description": "Homebridge Plugin for Dreo Smart Devices - clean DR-HTF017S deployment build",
   "homepage": "https://github.com/suhailphotos/homebridge-dreo",
   "license": "Apache-2.0",
