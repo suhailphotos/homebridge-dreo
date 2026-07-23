@@ -452,10 +452,14 @@ export class FanAccessory extends BaseAccessory {
         continue;
       }
       const service =
-        modeAccessory.getService(this.platform.Service.Switch) ||
+        modeAccessory.getServiceById(
+          this.platform.Service.Switch,
+          mode.subtype,
+        ) ||
         modeAccessory.addService(
           this.platform.Service.Switch,
           mode.name,
+          mode.subtype,
         );
 
       service
@@ -502,12 +506,14 @@ export class FanAccessory extends BaseAccessory {
     ) {
       this.currState.ledAlwaysOn = Boolean(state.ledalwayson.state);
       this.displayAutoOffService =
-        this.controlAccessories.displayAutoOff.getService(
+        this.controlAccessories.displayAutoOff.getServiceById(
           this.platform.Service.Switch,
+          'dreo-display-auto-off',
         ) ||
         this.controlAccessories.displayAutoOff.addService(
           this.platform.Service.Switch,
           'Display Auto Off',
+          'dreo-display-auto-off',
         );
       this.displayAutoOffService
         .setCharacteristic(
@@ -527,12 +533,14 @@ export class FanAccessory extends BaseAccessory {
     ) {
       this.currState.panelSound = Boolean(state.voiceon.state);
       this.panelSoundService =
-        this.controlAccessories.panelSound.getService(
+        this.controlAccessories.panelSound.getServiceById(
           this.platform.Service.Switch,
+          'dreo-panel-sound',
         ) ||
         this.controlAccessories.panelSound.addService(
           this.platform.Service.Switch,
           'Panel Sound',
+          'dreo-panel-sound',
         );
       this.panelSoundService
         .setCharacteristic(
