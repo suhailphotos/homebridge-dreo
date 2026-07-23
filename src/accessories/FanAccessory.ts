@@ -76,6 +76,7 @@ export class FanAccessory extends BaseAccessory {
     this.service =
       this.accessory.getService(this.platform.Service.Fanv2) ||
       this.accessory.addService(this.platform.Service.Fanv2);
+    this.service.setPrimaryService();
 
     // Set the service name, this is what is displayed as the default name on the Home app
     // In this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -145,6 +146,14 @@ export class FanAccessory extends BaseAccessory {
         this.oscillationService
           .getCharacteristic(this.platform.Characteristic.On)
           .updateValue(this.currState.swing);
+      } else {
+        const existingOscillationService = this.accessory.getServiceById(
+          this.platform.Service.Switch,
+          'dreo-oscillation',
+        );
+        if (existingOscillationService) {
+          this.accessory.removeService(existingOscillationService);
+        }
       }
     }
 
