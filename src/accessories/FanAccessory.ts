@@ -1,6 +1,7 @@
 import { Service, PlatformAccessory } from 'homebridge';
 import { DreoPlatform } from '../platform';
 import { BaseAccessory } from './BaseAccessory';
+import { getMaxFanSpeed, getSwingCommand } from './FanCapabilities';
 
 /**
  * Platform Accessory
@@ -36,11 +37,8 @@ export class FanAccessory extends BaseAccessory {
     super(platform, accessory);
 
     // Initialize fan values
-    // Get max fan speed from Dreo API
-    this.currState.maxSpeed =
-      accessory.context.device.controlsConf.control.find(
-        (params) => params.type === 'Speed',
-      ).items[1].text;
+    // Prefer capability metadata, with a model profile fallback when Dreo omits it.
+    this.currState.maxSpeed = getMaxFanSpeed(accessory.context.device);
     // Load current state from Dreo API
     this.currState.speed =
       (state.windlevel.state * 100) / this.currState.maxSpeed;
@@ -86,12 +84,8 @@ export class FanAccessory extends BaseAccessory {
 
     // Check whether fan supports oscillation
     // Some fans use different commands to toggle oscillation, determine which one should be used
-    const swing = accessory.context.device.controlsConf.control.find(
-      (params) => params.type === 'Oscillation',
-    );
-    if (swing !== undefined) {
-      this.currState.swingCMD = swing.cmd;
-    }
+    const swingCommand = getSwingCommand(accessory.context.device, state);
+    this.currState.swingCMD = swingCommand || 'none';
 
     if (this.currState.swingCMD !== 'none') {
       // Register handlers for Swing Mode (oscillation)
@@ -99,7 +93,9 @@ export class FanAccessory extends BaseAccessory {
         .getCharacteristic(this.platform.Characteristic.SwingMode)
         .onSet(this.setSwingMode.bind(this))
         .onGet(this.getSwingMode.bind(this));
-      this.currState.swing = state[this.currState.swingCMD].state;
+      this.currState.swing = Boolean(
+        state[this.currState.swingCMD]?.state,
+      );
     }
 
     // Check if mode control is supported

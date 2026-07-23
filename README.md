@@ -44,6 +44,7 @@ Homebridge plugin for Dreo brand smart devices. [Dreo Fans on Amazon](https://ww
 * DR-HTF005S
 * DR-HTF007S
 * DR-HTF011S
+* DR-HTF017S
 
 #### Heaters
 
