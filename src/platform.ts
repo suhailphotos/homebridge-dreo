@@ -169,7 +169,7 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       ];
 
       // Find the matching prefix
-      let modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
+      const modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
 
       // Determine device type based on the matched prefix
       switch (modelPrefix) {

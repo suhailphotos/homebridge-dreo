@@ -1,5 +1,6 @@
 const assert = require('assert');
 const {
+  getConfiguredMaxSpeed,
   getMaxFanSpeed,
   getSwingCommand,
 } = require('../dist/accessories/FanCapabilities');
@@ -65,6 +66,10 @@ const tests = [
   {
     name: 'handles malformed or missing capability metadata',
     run() {
+      assert.strictEqual(
+        getConfiguredMaxSpeed({ controlsConf: {} }, 4),
+        4,
+      );
       assert.strictEqual(
         getMaxFanSpeed({
           model: 'UNKNOWN',

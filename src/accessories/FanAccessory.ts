@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory } from 'homebridge';
+import { CharacteristicValue, Service, PlatformAccessory } from 'homebridge';
 import { DreoPlatform } from '../platform';
 import { BaseAccessory } from './BaseAccessory';
 import { getMaxFanSpeed, getSwingCommand } from './FanCapabilities';
@@ -12,6 +12,7 @@ export class FanAccessory extends BaseAccessory {
   private service: Service;
   private temperatureService?: Service;
   private lightService?: Service;
+  private oscillationService?: Service;
 
   // Cached copy of latest fan states
   private currState = {
@@ -41,7 +42,7 @@ export class FanAccessory extends BaseAccessory {
     this.currState.maxSpeed = getMaxFanSpeed(accessory.context.device);
     // Load current state from Dreo API
     this.currState.speed =
-      (state.windlevel.state * 100) / this.currState.maxSpeed;
+      ((state.windlevel?.state || 1) * 100) / this.currState.maxSpeed;
     // Some fans use different commands to toggle power, determine which one should be used
     if (state.fanon !== undefined) {
       this.currState.powerCMD = 'fanon';
@@ -96,6 +97,32 @@ export class FanAccessory extends BaseAccessory {
       this.currState.swing = Boolean(
         state[this.currState.swingCMD]?.state,
       );
+
+      if (this.platform.config.exposeOscillationSwitch) {
+        this.oscillationService =
+          this.accessory.getServiceById(
+            this.platform.Service.Switch,
+            'dreo-oscillation',
+          ) ||
+          this.accessory.addService(
+            this.platform.Service.Switch,
+            accessory.context.device.deviceName + ' Oscillation',
+            'dreo-oscillation',
+          );
+
+        this.oscillationService
+          .setCharacteristic(
+            this.platform.Characteristic.Name,
+            accessory.context.device.deviceName + ' Oscillation',
+          )
+          .getCharacteristic(this.platform.Characteristic.On)
+          .onSet(this.setSwingMode.bind(this))
+          .onGet(this.getSwingMode.bind(this));
+
+        this.oscillationService
+          .getCharacteristic(this.platform.Characteristic.On)
+          .updateValue(this.currState.swing);
+      }
     }
 
     // Check if mode control is supported
@@ -225,6 +252,9 @@ export class FanAccessory extends BaseAccessory {
                   'Oscillation mode:',
                   data.reported.shakehorizon,
                 );
+                this.oscillationService
+                  ?.getCharacteristic(this.platform.Characteristic.On)
+                  .updateValue(Boolean(this.currState.swing));
                 break;
               case 'hoscon':
                 this.currState.swing = data.reported.hoscon;
@@ -235,6 +265,9 @@ export class FanAccessory extends BaseAccessory {
                   'Oscillation mode:',
                   data.reported.hoscon,
                 );
+                this.oscillationService
+                  ?.getCharacteristic(this.platform.Characteristic.On)
+                  .updateValue(Boolean(this.currState.swing));
                 break;
               case 'oscmode':
                 this.currState.swing = Boolean(data.reported.oscmode);
@@ -245,6 +278,9 @@ export class FanAccessory extends BaseAccessory {
                   'Oscillation mode:',
                   data.reported.oscmode,
                 );
+                this.oscillationService
+                  ?.getCharacteristic(this.platform.Characteristic.On)
+                  .updateValue(Boolean(this.currState.swing));
                 break;
               case 'mode':
                 this.currState.autoMode = this.convertModeToBoolean(
@@ -402,7 +438,7 @@ export class FanAccessory extends BaseAccessory {
     return value === 4;
   }
 
-  setLightOn(value: any) {
+  setLightOn(value: CharacteristicValue) {
     this.platform.log.debug('Triggered SET Light On:', value);
     this.platform.webHelper.control(this.sn, { lighton: Boolean(value) });
   }

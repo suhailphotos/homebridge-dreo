@@ -49,6 +49,12 @@
         },
         "default": 0,
         "description": "Subtract (or add) a set amount from the temperature reading (use negative numbers to subtract). This setting only applies to fans."
+      },
+      "exposeOscillationSwitch": {
+        "title": "Expose Oscillation as a Switch",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose fan oscillation as an additional switch for Home clients that do not display Fanv2 Swing Mode."
       }
     }
   },
@@ -67,6 +73,13 @@
       "items": [
         "hideTemperatureSensor",
         "temperatureOffset"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Oscillation",
+      "items": [
+        "exposeOscillationSwitch"
       ]
     }
   ]

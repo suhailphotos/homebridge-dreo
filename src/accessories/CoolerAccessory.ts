@@ -1,6 +1,7 @@
 import { Service, PlatformAccessory } from 'homebridge';
 import { DreoPlatform } from '../platform';
 import { BaseAccessory } from './BaseAccessory';
+import { getConfiguredMaxSpeed } from './FanCapabilities';
 
 /**
  * Air Conditioner / Cooler Accessory
@@ -37,13 +38,11 @@ export class CoolerAccessory extends BaseAccessory {
     this.currState.humidity = state.humidity?.state || 0;
     this.currState.mode = this.mapMode(state.hvacmode?.state || 0);
 
-    // Get max speed
-    const speedControl = accessory.context.device.controlsConf.control.find(
-      (params) => params.type === 'Speed',
+    // Keep the published enhanced plugin's safe fallback when metadata is absent.
+    this.currState.maxSpeed = getConfiguredMaxSpeed(
+      accessory.context.device,
+      4,
     );
-    if (speedControl) {
-      this.currState.maxSpeed = speedControl.items[1].text || 4;
-    }
 
     // Main Cooler Service
     this.service =
