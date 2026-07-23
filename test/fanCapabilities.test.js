@@ -2,6 +2,8 @@ const assert = require('assert');
 const {
   getConfiguredMaxSpeed,
   getMaxFanSpeed,
+  getModeCommand,
+  getStateValue,
   getSwingCommand,
 } = require('../dist/accessories/FanCapabilities');
 
@@ -60,6 +62,24 @@ const tests = [
       assert.strictEqual(
         getSwingCommand(device, { oscmode: { state: 0 } }),
         'oscmode',
+      );
+    },
+  },
+  {
+    name: 'detects fan mode command variants from live state',
+    run() {
+      assert.strictEqual(
+        getModeCommand({ windtype: { state: 2 } }),
+        'windtype',
+      );
+      assert.strictEqual(
+        getModeCommand({ mode: { state: 4 } }),
+        'mode',
+      );
+      assert.strictEqual(getModeCommand({}), undefined);
+      assert.strictEqual(
+        getStateValue({ windtype: { state: 3 } }, 'windtype'),
+        3,
       );
     },
   },

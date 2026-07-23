@@ -1,7 +1,19 @@
 import { CharacteristicValue, Service, PlatformAccessory } from 'homebridge';
 import { DreoPlatform } from '../platform';
 import { BaseAccessory } from './BaseAccessory';
-import { getMaxFanSpeed, getSwingCommand } from './FanCapabilities';
+import {
+  getMaxFanSpeed,
+  getModeCommand,
+  getStateValue,
+  getSwingCommand,
+} from './FanCapabilities';
+
+const FAN_MODES = [
+  { value: 1, name: 'Normal', subtype: 'dreo-mode-normal' },
+  { value: 2, name: 'Natural', subtype: 'dreo-mode-natural' },
+  { value: 3, name: 'Sleep', subtype: 'dreo-mode-sleep' },
+  { value: 4, name: 'Auto', subtype: 'dreo-mode-auto' },
+];
 
 /**
  * Platform Accessory
@@ -13,6 +25,9 @@ export class FanAccessory extends BaseAccessory {
   private temperatureService?: Service;
   private lightService?: Service;
   private oscillationService?: Service;
+  private displayAutoOffService?: Service;
+  private panelSoundService?: Service;
+  private readonly modeServices = new Map<number, Service>();
 
   // Cached copy of latest fan states
   private currState = {
@@ -21,12 +36,16 @@ export class FanAccessory extends BaseAccessory {
     speed: 1,
     swing: false,
     swingCMD: 'none', // Command used to control oscillation (shakehorizon, hoscon, oscmode)
+    mode: 1,
+    modeCMD: 'none', // Command used to control mode (windtype, mode)
     autoMode: false,
     lockPhysicalControls: false,
     maxSpeed: 1,
     temperature: 0,
     lightOn: false,
     brightness: 100,
+    ledAlwaysOn: false,
+    panelSound: false,
   };
 
   constructor(
@@ -72,6 +91,10 @@ export class FanAccessory extends BaseAccessory {
       .getCharacteristic(this.platform.Characteristic.Active)
       .onSet(this.setActive.bind(this))
       .onGet(this.getActive.bind(this));
+    this.service
+      .getCharacteristic(this.platform.Characteristic.CurrentFanState)
+      .onGet(this.getCurrentFanState.bind(this))
+      .updateValue(this.getCurrentFanState());
 
     // Register handlers for the RotationSpeed Characteristic
     this.service
@@ -125,14 +148,23 @@ export class FanAccessory extends BaseAccessory {
       }
     }
 
-    // Check if mode control is supported
-    if (state.mode !== undefined) {
+    // Check if mode control is supported. Newer fans report "windtype"
+    // instead of "mode".
+    const modeCommand = getModeCommand(state);
+    this.currState.modeCMD = modeCommand || 'none';
+    if (modeCommand) {
+      this.currState.mode = Number(getStateValue(state, modeCommand));
+      this.currState.autoMode = this.convertModeToBoolean(this.currState.mode);
+
       // Register handlers for Target Fan State
       this.service
         .getCharacteristic(this.platform.Characteristic.TargetFanState)
         .onSet(this.setMode.bind(this))
         .onGet(this.getMode.bind(this));
-      this.currState.autoMode = this.convertModeToBoolean(state.mode.state);
+
+      this.configureModeSwitches();
+    } else {
+      this.removeModeSwitches();
     }
 
     // Check if child lock is supported
@@ -144,6 +176,8 @@ export class FanAccessory extends BaseAccessory {
         .onGet(this.getLockPhysicalControls.bind(this));
       this.currState.lockPhysicalControls = Boolean(state.childlockon.state);
     }
+
+    this.configurePreferenceSwitches(state);
 
     const shouldHideTemperatureSensor =
       this.platform.config.hideTemperatureSensor || false; // default to false if not defined
@@ -226,6 +260,7 @@ export class FanAccessory extends BaseAccessory {
                 this.service
                   .getCharacteristic(this.platform.Characteristic.Active)
                   .updateValue(this.currState.on);
+                this.updateCurrentFanState();
                 this.platform.log.debug('Fan power:', data.reported.poweron);
                 break;
               case 'fanon':
@@ -233,6 +268,7 @@ export class FanAccessory extends BaseAccessory {
                 this.service
                   .getCharacteristic(this.platform.Characteristic.Active)
                   .updateValue(this.currState.on);
+                this.updateCurrentFanState();
                 this.platform.log.debug('Fan power:', data.reported.fanon);
                 break;
               case 'windlevel':
@@ -283,15 +319,31 @@ export class FanAccessory extends BaseAccessory {
                   .updateValue(Boolean(this.currState.swing));
                 break;
               case 'mode':
-                this.currState.autoMode = this.convertModeToBoolean(
-                  data.reported.mode,
+              case 'windtype':
+                this.updateMode(Number(data.reported[key]));
+                this.platform.log.debug('Fan mode:', data.reported[key]);
+                break;
+              case 'ledalwayson':
+                this.currState.ledAlwaysOn = Boolean(
+                  data.reported.ledalwayson,
                 );
-                this.service
-                  .getCharacteristic(
-                    this.platform.Characteristic.TargetFanState,
-                  )
-                  .updateValue(this.currState.autoMode);
-                this.platform.log.debug('Fan mode:', data.reported.mode);
+                this.displayAutoOffService
+                  ?.getCharacteristic(this.platform.Characteristic.On)
+                  .updateValue(!this.currState.ledAlwaysOn);
+                this.platform.log.debug(
+                  'Display always on:',
+                  data.reported.ledalwayson,
+                );
+                break;
+              case 'voiceon':
+                this.currState.panelSound = Boolean(data.reported.voiceon);
+                this.panelSoundService
+                  ?.getCharacteristic(this.platform.Characteristic.On)
+                  .updateValue(this.currState.panelSound);
+                this.platform.log.debug(
+                  'Panel sound:',
+                  data.reported.voiceon,
+                );
                 break;
               case 'childlockon':
                 this.currState.lockPhysicalControls = Boolean(
@@ -355,6 +407,119 @@ export class FanAccessory extends BaseAccessory {
     });
   }
 
+  private configureModeSwitches() {
+    if (!this.platform.config.exposeFanModeSwitches) {
+      this.removeModeSwitches();
+      return;
+    }
+
+    for (const mode of FAN_MODES) {
+      const service =
+        this.accessory.getServiceById(
+          this.platform.Service.Switch,
+          mode.subtype,
+        ) ||
+        this.accessory.addService(
+          this.platform.Service.Switch,
+          `${this.accessory.displayName} ${mode.name}`,
+          mode.subtype,
+        );
+
+      service
+        .setCharacteristic(
+          this.platform.Characteristic.Name,
+          `${this.accessory.displayName} ${mode.name}`,
+        )
+        .getCharacteristic(this.platform.Characteristic.On)
+        .onSet((value) => this.setDetailedMode(mode.value, value))
+        .onGet(() => this.currState.mode === mode.value)
+        .updateValue(this.currState.mode === mode.value);
+
+      this.service.addLinkedService(service);
+      this.modeServices.set(mode.value, service);
+    }
+  }
+
+  private removeModeSwitches() {
+    for (const mode of FAN_MODES) {
+      const service = this.accessory.getServiceById(
+        this.platform.Service.Switch,
+        mode.subtype,
+      );
+      if (service) {
+        this.accessory.removeService(service);
+      }
+    }
+    this.modeServices.clear();
+  }
+
+  private configurePreferenceSwitches(state) {
+    const exposePreferences =
+      this.platform.config.exposeFanPreferences || false;
+
+    if (exposePreferences && state.ledalwayson !== undefined) {
+      this.currState.ledAlwaysOn = Boolean(state.ledalwayson.state);
+      this.displayAutoOffService =
+        this.accessory.getServiceById(
+          this.platform.Service.Switch,
+          'dreo-display-auto-off',
+        ) ||
+        this.accessory.addService(
+          this.platform.Service.Switch,
+          `${this.accessory.displayName} Display Auto Off`,
+          'dreo-display-auto-off',
+        );
+      this.displayAutoOffService
+        .setCharacteristic(
+          this.platform.Characteristic.Name,
+          `${this.accessory.displayName} Display Auto Off`,
+        )
+        .getCharacteristic(this.platform.Characteristic.On)
+        .onSet(this.setDisplayAutoOff.bind(this))
+        .onGet(this.getDisplayAutoOff.bind(this))
+        .updateValue(!this.currState.ledAlwaysOn);
+      this.service.addLinkedService(this.displayAutoOffService);
+    } else {
+      this.removeSwitch('dreo-display-auto-off');
+    }
+
+    if (exposePreferences && state.voiceon !== undefined) {
+      this.currState.panelSound = Boolean(state.voiceon.state);
+      this.panelSoundService =
+        this.accessory.getServiceById(
+          this.platform.Service.Switch,
+          'dreo-panel-sound',
+        ) ||
+        this.accessory.addService(
+          this.platform.Service.Switch,
+          `${this.accessory.displayName} Panel Sound`,
+          'dreo-panel-sound',
+        );
+      this.panelSoundService
+        .setCharacteristic(
+          this.platform.Characteristic.Name,
+          `${this.accessory.displayName} Panel Sound`,
+        )
+        .getCharacteristic(this.platform.Characteristic.On)
+        .onSet(this.setPanelSound.bind(this))
+        .onGet(this.getPanelSound.bind(this))
+        .updateValue(this.currState.panelSound);
+      this.service.addLinkedService(this.panelSoundService);
+    } else {
+      this.removeSwitch('dreo-panel-sound');
+    }
+  }
+
+  private removeSwitch(subtype: string) {
+    const service = this.accessory.getServiceById(
+      this.platform.Service.Switch,
+      subtype,
+    );
+    if (service) {
+      this.accessory.removeService(service);
+    }
+  }
+
   // Handle requests to set the "Active" characteristic
   setActive(value) {
     this.platform.log.debug('Triggered SET Active:', value);
@@ -370,6 +535,18 @@ export class FanAccessory extends BaseAccessory {
   // Handle requests to get the current value of the "Active" characteristic
   getActive() {
     return this.currState.on;
+  }
+
+  getCurrentFanState() {
+    return this.currState.on
+      ? this.platform.Characteristic.CurrentFanState.BLOWING_AIR
+      : this.platform.Characteristic.CurrentFanState.INACTIVE;
+  }
+
+  private updateCurrentFanState() {
+    this.service
+      .getCharacteristic(this.platform.Characteristic.CurrentFanState)
+      .updateValue(this.getCurrentFanState());
   }
 
   // Handle requests to set the fan speed
@@ -406,12 +583,69 @@ export class FanAccessory extends BaseAccessory {
   // Set fan mode
   async setMode(value) {
     this.platform.webHelper.control(this.sn, {
-      mode: value === this.platform.Characteristic.TargetFanState.AUTO ? 4 : 1,
+      [this.currState.modeCMD]:
+        value === this.platform.Characteristic.TargetFanState.AUTO ? 4 : 1,
     });
   }
 
   async getMode() {
     return this.currState.autoMode;
+  }
+
+  private setDetailedMode(mode: number, value: CharacteristicValue) {
+    if (Boolean(value)) {
+      this.platform.webHelper.control(this.sn, {
+        [this.currState.modeCMD]: mode,
+      });
+      return;
+    }
+
+    // A fan always has one active mode. Turning off a selected non-Normal
+    // switch returns it to Normal; Normal itself cannot be turned off.
+    if (this.currState.mode === mode && mode !== 1) {
+      this.platform.webHelper.control(this.sn, {
+        [this.currState.modeCMD]: 1,
+      });
+    } else {
+      this.modeServices
+        .get(mode)
+        ?.getCharacteristic(this.platform.Characteristic.On)
+        .updateValue(this.currState.mode === mode);
+    }
+  }
+
+  private updateMode(mode: number) {
+    this.currState.mode = mode;
+    this.currState.autoMode = this.convertModeToBoolean(mode);
+    this.service
+      .getCharacteristic(this.platform.Characteristic.TargetFanState)
+      .updateValue(this.currState.autoMode);
+
+    for (const [modeValue, service] of this.modeServices) {
+      service
+        .getCharacteristic(this.platform.Characteristic.On)
+        .updateValue(modeValue === mode);
+    }
+  }
+
+  private setDisplayAutoOff(value: CharacteristicValue) {
+    this.platform.webHelper.control(this.sn, {
+      ledalwayson: !Boolean(value),
+    });
+  }
+
+  private getDisplayAutoOff() {
+    return !this.currState.ledAlwaysOn;
+  }
+
+  private setPanelSound(value: CharacteristicValue) {
+    this.platform.webHelper.control(this.sn, {
+      voiceon: Boolean(value),
+    });
+  }
+
+  private getPanelSound() {
+    return this.currState.panelSound;
   }
 
   // Turn child lock on/off

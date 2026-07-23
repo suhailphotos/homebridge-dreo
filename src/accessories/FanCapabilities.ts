@@ -73,3 +73,14 @@ export function getSwingCommand(
 
   return stateCommand || FAN_PROFILES[device.model || '']?.swingCommand;
 }
+
+export function getModeCommand(state: FanState): string | undefined {
+  return ['windtype', 'mode'].find((command) => state[command] !== undefined);
+}
+
+export function getStateValue(
+  state: FanState,
+  command: string,
+): unknown {
+  return state[command]?.state;
+}

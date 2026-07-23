@@ -21,7 +21,7 @@ npm pack --pack-destination artifacts
 The resulting package is:
 
 ```text
-artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.1.tgz
+artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.3.tgz
 ```
 
 ## Homebridge configuration
@@ -29,7 +29,7 @@ artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.1.tgz
 Set the local package as the Homebridge dependency:
 
 ```json
-"@simoore/homebridge-dreo-enhanced": "file:packages/simoore-homebridge-dreo-enhanced-5.1.4-vortex.1.tgz"
+"@simoore/homebridge-dreo-enhanced": "file:packages/simoore-homebridge-dreo-enhanced-5.1.4-vortex.3.tgz"
 ```
 
 Enable the optional Apple Home switch while native `Fanv2.SwingMode` is not
@@ -41,6 +41,18 @@ rendered:
 
 The switch uses the existing `dreo-oscillation` subtype, preserving the
 service created by the former runtime patch.
+
+Enable the optional controls that Apple Home does not represent as native fan
+characteristics:
+
+```json
+"exposeFanModeSwitches": true,
+"exposeFanPreferences": true
+```
+
+These expose the four Dreo modes plus Display Auto Off and Panel Sound as
+standard, automatable HomeKit switches. They remain synchronized when settings
+change in either Apple Home or the Dreo app.
 
 ## Rollback
 

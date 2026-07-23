@@ -216,6 +216,10 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       if (!existingAccessory && modelPrefix) {
         // Link accessory to the platform if model is supported
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } else if (existingAccessory && modelPrefix) {
+        // Persist services and optional characteristics added while restoring
+        // an accessory, otherwise Homebridge can keep an outdated cache.
+        this.api.updatePlatformAccessories([accessory]);
       }
     }
   }

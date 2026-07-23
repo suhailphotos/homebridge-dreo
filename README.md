@@ -65,6 +65,9 @@ Please open an issue if you have another model that works or doesn't work. If yo
 * **Fan Speed:** Fan speed is displayed as a percentage value with steps that are equivalent to those of the Dreo app. (for example, a fan with speeds 1-6 will have steps at 17%, 33%, 50% etc)
 
 * **Oscillate:** Toggles fan oscillation
+* **Auto/Manual Mode:** Uses HomeKit's native fan target-state control when the fan reports modes.
+* **Named Modes (optional):** Exposes Normal, Natural, Sleep, and Auto as synchronized switches because HomeKit's fan service only defines Manual and Auto.
+* **Fan Preferences (optional):** Exposes supported Dreo-only settings such as Display Auto Off and Panel Sound as synchronized switches.
 * **Temperature Sensor:** Displays current temperature sensor reading. (for supported devices, check your devices capabilities) Because the Dreo fan temperature sensors are not entirely accurate, you can also set a specific temperature offset for your devices.
 * **Child Lock:** Lock physical fan controls
 
@@ -124,6 +127,9 @@ Provide your Dreo app login credentials
     },
     "hideTemperatureSensor": false,
     "temperatureOffset": 0,
+    "exposeOscillationSwitch": false,
+    "exposeFanModeSwitches": false,
+    "exposeFanPreferences": false,
     "name": "Dreo Platform",
     "platform": "DreoPlatform"
   }
