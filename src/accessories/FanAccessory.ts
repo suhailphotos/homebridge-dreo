@@ -15,6 +15,13 @@ const FAN_MODES = [
   { value: 4, name: 'Auto', subtype: 'dreo-mode-auto' },
 ];
 
+export interface FanControlAccessories {
+  modes?: Map<number, PlatformAccessory>;
+  displayAutoOff?: PlatformAccessory;
+  panelSound?: PlatformAccessory;
+  temperature?: PlatformAccessory;
+}
+
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
@@ -52,6 +59,7 @@ export class FanAccessory extends BaseAccessory {
     platform: DreoPlatform,
     accessory: PlatformAccessory,
     private readonly state,
+    private readonly controlAccessories: FanControlAccessories = {},
   ) {
     // Call base class constructor
     super(platform, accessory);
@@ -197,17 +205,31 @@ export class FanAccessory extends BaseAccessory {
         state.temperature.state,
       );
 
-      // Check if the Temperature Sensor service already exists, if not create a new one
-      this.temperatureService = this.accessory.getService(
+      const temperatureAccessory =
+        this.controlAccessories.temperature || this.accessory;
+      if (temperatureAccessory !== this.accessory) {
+        const embeddedTemperatureService = this.accessory.getService(
+          this.platform.Service.TemperatureSensor,
+        );
+        if (embeddedTemperatureService) {
+          this.accessory.removeService(embeddedTemperatureService);
+        }
+      }
+
+      this.temperatureService = temperatureAccessory.getService(
         this.platform.Service.TemperatureSensor,
       );
 
       if (!this.temperatureService) {
-        this.temperatureService = this.accessory.addService(
+        this.temperatureService = temperatureAccessory.addService(
           this.platform.Service.TemperatureSensor,
-          'Temperature Sensor',
+          'Temperature',
         );
       }
+      this.temperatureService.setCharacteristic(
+        this.platform.Characteristic.Name,
+        'Temperature',
+      );
 
       // Bind the get handler for temperature to this service
       this.temperatureService
@@ -417,21 +439,23 @@ export class FanAccessory extends BaseAccessory {
   }
 
   private configureModeSwitches() {
+    this.removeEmbeddedModeSwitches();
+
     if (!this.platform.config.exposeFanModeSwitches) {
-      this.removeModeSwitches();
+      this.modeServices.clear();
       return;
     }
 
     for (const mode of FAN_MODES) {
+      const modeAccessory = this.controlAccessories.modes?.get(mode.value);
+      if (!modeAccessory) {
+        continue;
+      }
       const service =
-        this.accessory.getServiceById(
-          this.platform.Service.Switch,
-          mode.subtype,
-        ) ||
-        this.accessory.addService(
+        modeAccessory.getService(this.platform.Service.Switch) ||
+        modeAccessory.addService(
           this.platform.Service.Switch,
           mode.name,
-          mode.subtype,
         );
 
       service
@@ -444,12 +468,16 @@ export class FanAccessory extends BaseAccessory {
         .onGet(() => this.currState.mode === mode.value)
         .updateValue(this.currState.mode === mode.value);
 
-      this.service.addLinkedService(service);
       this.modeServices.set(mode.value, service);
     }
   }
 
   private removeModeSwitches() {
+    this.removeEmbeddedModeSwitches();
+    this.modeServices.clear();
+  }
+
+  private removeEmbeddedModeSwitches() {
     for (const mode of FAN_MODES) {
       const service = this.accessory.getServiceById(
         this.platform.Service.Switch,
@@ -459,24 +487,27 @@ export class FanAccessory extends BaseAccessory {
         this.accessory.removeService(service);
       }
     }
-    this.modeServices.clear();
   }
 
   private configurePreferenceSwitches(state) {
     const exposePreferences =
       this.platform.config.exposeFanPreferences || false;
+    this.removeSwitch('dreo-display-auto-off');
+    this.removeSwitch('dreo-panel-sound');
 
-    if (exposePreferences && state.ledalwayson !== undefined) {
+    if (
+      exposePreferences &&
+      state.ledalwayson !== undefined &&
+      this.controlAccessories.displayAutoOff
+    ) {
       this.currState.ledAlwaysOn = Boolean(state.ledalwayson.state);
       this.displayAutoOffService =
-        this.accessory.getServiceById(
+        this.controlAccessories.displayAutoOff.getService(
           this.platform.Service.Switch,
-          'dreo-display-auto-off',
         ) ||
-        this.accessory.addService(
+        this.controlAccessories.displayAutoOff.addService(
           this.platform.Service.Switch,
           'Display Auto Off',
-          'dreo-display-auto-off',
         );
       this.displayAutoOffService
         .setCharacteristic(
@@ -487,22 +518,21 @@ export class FanAccessory extends BaseAccessory {
         .onSet(this.setDisplayAutoOff.bind(this))
         .onGet(this.getDisplayAutoOff.bind(this))
         .updateValue(!this.currState.ledAlwaysOn);
-      this.service.addLinkedService(this.displayAutoOffService);
-    } else {
-      this.removeSwitch('dreo-display-auto-off');
     }
 
-    if (exposePreferences && state.voiceon !== undefined) {
+    if (
+      exposePreferences &&
+      state.voiceon !== undefined &&
+      this.controlAccessories.panelSound
+    ) {
       this.currState.panelSound = Boolean(state.voiceon.state);
       this.panelSoundService =
-        this.accessory.getServiceById(
+        this.controlAccessories.panelSound.getService(
           this.platform.Service.Switch,
-          'dreo-panel-sound',
         ) ||
-        this.accessory.addService(
+        this.controlAccessories.panelSound.addService(
           this.platform.Service.Switch,
           'Panel Sound',
-          'dreo-panel-sound',
         );
       this.panelSoundService
         .setCharacteristic(
@@ -513,9 +543,6 @@ export class FanAccessory extends BaseAccessory {
         .onSet(this.setPanelSound.bind(this))
         .onGet(this.getPanelSound.bind(this))
         .updateValue(this.currState.panelSound);
-      this.service.addLinkedService(this.panelSoundService);
-    } else {
-      this.removeSwitch('dreo-panel-sound');
     }
   }
 
