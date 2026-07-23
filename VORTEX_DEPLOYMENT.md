@@ -21,7 +21,7 @@ npm pack --pack-destination artifacts
 The resulting package is:
 
 ```text
-artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.5.tgz
+artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.6.tgz
 ```
 
 ## Homebridge configuration
@@ -29,7 +29,7 @@ artifacts/simoore-homebridge-dreo-enhanced-5.1.4-vortex.5.tgz
 Set the local package as the Homebridge dependency:
 
 ```json
-"@simoore/homebridge-dreo-enhanced": "file:packages/simoore-homebridge-dreo-enhanced-5.1.4-vortex.5.tgz"
+"@simoore/homebridge-dreo-enhanced": "file:packages/simoore-homebridge-dreo-enhanced-5.1.4-vortex.6.tgz"
 ```
 
 Enable the optional Apple Home switch while native `Fanv2.SwingMode` is not
