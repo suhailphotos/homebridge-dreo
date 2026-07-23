@@ -18,11 +18,6 @@ const FAN_MODE_CONTROLS = [
   { value: 4, name: 'Auto', suffix: 'dreo-mode-auto' },
 ];
 
-const FAN_PREFERENCE_CONTROLS = [
-  { key: 'displayAutoOff', name: 'Display Auto Off', suffix: 'dreo-display-auto-off' },
-  { key: 'panelSound', name: 'Panel Sound', suffix: 'dreo-panel-sound' },
-];
-
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
@@ -121,19 +116,14 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       discoveredDeviceUUIDs.add(this.api.hap.uuid.generate(device.sn));
       const isFan = ['DR-HTF', 'DR-HAF', 'DR-HPF', 'DR-HCF', 'DR-HAP']
         .some(prefix => device.model.startsWith(prefix));
-      if (isFan && this.config.exposeFanModeSwitches) {
-        for (const control of FAN_MODE_CONTROLS) {
-          discoveredDeviceUUIDs.add(
-            this.api.hap.uuid.generate(`${device.sn}:${control.suffix}`),
-          );
-        }
-      }
-      if (isFan && this.config.exposeFanPreferences) {
-        for (const control of FAN_PREFERENCE_CONTROLS) {
-          discoveredDeviceUUIDs.add(
-            this.api.hap.uuid.generate(`${device.sn}:${control.suffix}`),
-          );
-        }
+      if (
+        isFan &&
+        (this.config.exposeFanModeSwitches ||
+          this.config.exposeFanPreferences)
+      ) {
+        discoveredDeviceUUIDs.add(
+          this.api.hap.uuid.generate(`${device.sn}:dreo-controls`),
+        );
       }
       if (isFan && !this.config.hideTemperatureSensor) {
         discoveredDeviceUUIDs.add(
@@ -257,30 +247,33 @@ export class DreoPlatform implements DynamicPlatformPlugin {
                 );
               return controlAccessory;
             };
+            const groupedControlsAccessory =
+              this.config.exposeFanModeSwitches ||
+              this.config.exposeFanPreferences
+                ? getControlAccessory('Fan Controls', 'dreo-controls')
+                : undefined;
 
             if (
               this.config.exposeFanModeSwitches &&
-              (state.windtype !== undefined || state.mode !== undefined)
+              (state.windtype !== undefined || state.mode !== undefined) &&
+              groupedControlsAccessory
             ) {
               for (const control of FAN_MODE_CONTROLS) {
                 controlAccessories.modes!.set(
                   control.value,
-                  getControlAccessory(control.name, control.suffix),
+                  groupedControlsAccessory,
                 );
               }
             }
             if (this.config.exposeFanPreferences) {
-              if (state.ledalwayson !== undefined) {
-                controlAccessories.displayAutoOff = getControlAccessory(
-                  FAN_PREFERENCE_CONTROLS[0].name,
-                  FAN_PREFERENCE_CONTROLS[0].suffix,
-                );
+              if (
+                state.ledalwayson !== undefined &&
+                groupedControlsAccessory
+              ) {
+                controlAccessories.displayAutoOff = groupedControlsAccessory;
               }
-              if (state.voiceon !== undefined) {
-                controlAccessories.panelSound = getControlAccessory(
-                  FAN_PREFERENCE_CONTROLS[1].name,
-                  FAN_PREFERENCE_CONTROLS[1].suffix,
-                );
+              if (state.voiceon !== undefined && groupedControlsAccessory) {
+                controlAccessories.panelSound = groupedControlsAccessory;
               }
             }
             if (
