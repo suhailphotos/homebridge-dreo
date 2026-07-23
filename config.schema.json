@@ -49,6 +49,24 @@
         },
         "default": 0,
         "description": "Subtract (or add) a set amount from the temperature reading (use negative numbers to subtract). This setting only applies to fans."
+      },
+      "exposeOscillationSwitch": {
+        "title": "Expose Oscillation as a Switch",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose fan oscillation as an additional switch for Home clients that do not display Fanv2 Swing Mode."
+      },
+      "exposeFanModeSwitches": {
+        "title": "Expose Named Fan Modes",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose Normal, Natural, Sleep, and Auto as mutually synchronized switches when the fan reports named modes."
+      },
+      "exposeFanPreferences": {
+        "title": "Expose Fan Preferences",
+        "type": "boolean",
+        "default": false,
+        "description": "Expose supported Dreo-only preferences, such as Display Auto Off and Panel Sound, as switches."
       }
     }
   },
@@ -67,6 +85,21 @@
       "items": [
         "hideTemperatureSensor",
         "temperatureOffset"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Oscillation",
+      "items": [
+        "exposeOscillationSwitch"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Additional Fan Controls",
+      "items": [
+        "exposeFanModeSwitches",
+        "exposeFanPreferences"
       ]
     }
   ]

@@ -34,7 +34,10 @@ function getControls(device: FanDevice): FanControl[] {
   return Array.isArray(controls) ? controls : [];
 }
 
-export function getMaxFanSpeed(device: FanDevice): number {
+export function getConfiguredMaxSpeed(
+  device: FanDevice,
+  fallback: number,
+): number {
   const speedControl = getControls(device).find(
     (control) => control?.type === 'Speed',
   );
@@ -44,7 +47,12 @@ export function getMaxFanSpeed(device: FanDevice): number {
     return configuredMaxSpeed;
   }
 
-  return FAN_PROFILES[device.model || '']?.maxSpeed || 1;
+  return fallback;
+}
+
+export function getMaxFanSpeed(device: FanDevice): number {
+  const profileMaxSpeed = FAN_PROFILES[device.model || '']?.maxSpeed || 1;
+  return getConfiguredMaxSpeed(device, profileMaxSpeed);
 }
 
 export function getSwingCommand(
@@ -64,4 +72,15 @@ export function getSwingCommand(
   );
 
   return stateCommand || FAN_PROFILES[device.model || '']?.swingCommand;
+}
+
+export function getModeCommand(state: FanState): string | undefined {
+  return ['windtype', 'mode'].find((command) => state[command] !== undefined);
+}
+
+export function getStateValue(
+  state: FanState,
+  command: string,
+): unknown {
+  return state[command]?.state;
 }

@@ -169,7 +169,7 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       ];
 
       // Find the matching prefix
-      let modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
+      const modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
 
       // Determine device type based on the matched prefix
       switch (modelPrefix) {
@@ -216,6 +216,10 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       if (!existingAccessory && modelPrefix) {
         // Link accessory to the platform if model is supported
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } else if (existingAccessory && modelPrefix) {
+        // Persist services and optional characteristics added while restoring
+        // an accessory, otherwise Homebridge can keep an outdated cache.
+        this.api.updatePlatformAccessories([accessory]);
       }
     }
   }
