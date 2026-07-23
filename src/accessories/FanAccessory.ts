@@ -130,14 +130,14 @@ export class FanAccessory extends BaseAccessory {
           ) ||
           this.accessory.addService(
             this.platform.Service.Switch,
-            accessory.context.device.deviceName + ' Oscillation',
+            'Oscillation',
             'dreo-oscillation',
           );
 
         this.oscillationService
           .setCharacteristic(
             this.platform.Characteristic.Name,
-            accessory.context.device.deviceName + ' Oscillation',
+            'Oscillation',
           )
           .getCharacteristic(this.platform.Characteristic.On)
           .onSet(this.setSwingMode.bind(this))
@@ -430,14 +430,14 @@ export class FanAccessory extends BaseAccessory {
         ) ||
         this.accessory.addService(
           this.platform.Service.Switch,
-          `${this.accessory.displayName} ${mode.name}`,
+          mode.name,
           mode.subtype,
         );
 
       service
         .setCharacteristic(
           this.platform.Characteristic.Name,
-          `${this.accessory.displayName} ${mode.name}`,
+          mode.name,
         )
         .getCharacteristic(this.platform.Characteristic.On)
         .onSet((value) => this.setDetailedMode(mode.value, value))
@@ -475,13 +475,13 @@ export class FanAccessory extends BaseAccessory {
         ) ||
         this.accessory.addService(
           this.platform.Service.Switch,
-          `${this.accessory.displayName} Display Auto Off`,
+          'Display Auto Off',
           'dreo-display-auto-off',
         );
       this.displayAutoOffService
         .setCharacteristic(
           this.platform.Characteristic.Name,
-          `${this.accessory.displayName} Display Auto Off`,
+          'Display Auto Off',
         )
         .getCharacteristic(this.platform.Characteristic.On)
         .onSet(this.setDisplayAutoOff.bind(this))
@@ -501,13 +501,13 @@ export class FanAccessory extends BaseAccessory {
         ) ||
         this.accessory.addService(
           this.platform.Service.Switch,
-          `${this.accessory.displayName} Panel Sound`,
+          'Panel Sound',
           'dreo-panel-sound',
         );
       this.panelSoundService
         .setCharacteristic(
           this.platform.Characteristic.Name,
-          `${this.accessory.displayName} Panel Sound`,
+          'Panel Sound',
         )
         .getCharacteristic(this.platform.Characteristic.On)
         .onSet(this.setPanelSound.bind(this))
