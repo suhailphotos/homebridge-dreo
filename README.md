@@ -2,11 +2,11 @@
   <img src="https://play-lh.googleusercontent.com/8qg4gA2ZhxBNPPSlp3zT4Z54Meh-emx-JXs8M0H78_4ExRA1qE0aNpO00bI_2lbWo5g=w480-h960-rw" width=150>
 </p>
 
-# Homebridge Dreo Plugin
+# Homebridge Dreo Enhanced
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-[![NPM Version](https://img.shields.io/npm/v/homebridge-dreo.svg)](https://www.npmjs.com/package/homebridge-dreo)
-[![npm](https://img.shields.io/npm/dt/homebridge-dreo)](https://www.npmjs.com/package/homebridge-dreo)
+[![NPM Version](https://img.shields.io/npm/v/@simoore/homebridge-dreo-enhanced.svg)](https://www.npmjs.com/package/@simoore/homebridge-dreo-enhanced)
+[![npm](https://img.shields.io/npm/dt/@simoore/homebridge-dreo-enhanced)](https://www.npmjs.com/package/@simoore/homebridge-dreo-enhanced)
 
 Homebridge plugin for Dreo brand smart devices. [Dreo Fans on Amazon](https://www.amazon.com/s?k=Dreo+Smart+Fan&linkCode=ll2&tag=zyonse-20&linkId=45e21dea18d40bc4d1d9244334dae1fe&language=en_US&ref_=as_li_ss_tl) (Affiliate link)
 <p align="center">
@@ -65,8 +65,14 @@ Please open an issue if you have another model that works or doesn't work. If yo
 * **Fan Speed:** Fan speed is displayed as a percentage value with steps that are equivalent to those of the Dreo app. (for example, a fan with speeds 1-6 will have steps at 17%, 33%, 50% etc)
 
 * **Oscillate:** Toggles fan oscillation
+* **Auto/Manual Mode:** Uses HomeKit's native fan target-state control when the fan reports modes.
+* **Advanced Fan Controls (optional):** Exposes supported Dreo-only controls as separate, clearly named switch accessories. Named modes include Normal, Natural, Sleep, and Auto; preferences can include Display Auto Off and Panel Sound. HomeKit's native fan service remains the primary fan interface.
 * **Temperature Sensor:** Displays current temperature sensor reading. (for supported devices, check your devices capabilities) Because the Dreo fan temperature sensors are not entirely accurate, you can also set a specific temperature offset for your devices.
 * **Child Lock:** Lock physical fan controls
+
+Advanced fan controls are disabled by default to keep the out-of-box Home interface clean. Enable **Expose Advanced Fan Controls** in the Homebridge plugin settings to add every control supported by the fan. Each control is published as an independent accessory with its own name, so it is unambiguous in Apple Home, automations, and Siri.
+
+Apple Home can group the controls later if desired: open a control's settings, choose **Group with Other Accessories**, and select the related controls. Grouping is managed by Apple Home and may cause the grouped tiles to share the group name; the plugin cannot assign different visible tile names inside an Apple-created group.
 
 ### Heaters
 
@@ -106,7 +112,7 @@ Please open an issue if you have another model that works or doesn't work. If yo
 ## Installation
 
 ```bash
-npm install -g homebridge-dreo
+npm install -g @simoore/homebridge-dreo-enhanced
 ```
 
 (Or install through the Homebridge UI)
@@ -124,11 +130,15 @@ Provide your Dreo app login credentials
     },
     "hideTemperatureSensor": false,
     "temperatureOffset": 0,
+    "exposeOscillationSwitch": false,
+    "exposeAdvancedFanControls": false,
     "name": "Dreo Platform",
     "platform": "DreoPlatform"
   }
 ]
 ```
+
+Existing `exposeFanModeSwitches` and `exposeFanPreferences` settings remain supported for users who only want one subset of the advanced controls.
 
 ## Contributing
 

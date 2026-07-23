@@ -1,12 +1,33 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { FanAccessory } from './accessories/FanAccessory';
+import {
+  FanAccessory,
+  FanControlAccessories,
+} from './accessories/FanAccessory';
 import { HeaterAccessory } from './accessories/HeaterAccessory';
 import { HumidifierAccessory } from './accessories/HumidifierAccessory';
 import { CoolerAccessory } from './accessories/CoolerAccessory';
 import { DehumidifierAccessory } from './accessories/DehumidifierAccessory';
 import DreoAPI from './DreoAPI';
+
+const FAN_MODE_CONTROLS = [
+  { value: 1, name: 'Normal', suffix: 'dreo-mode-normal' },
+  { value: 2, name: 'Natural', suffix: 'dreo-mode-natural' },
+  { value: 3, name: 'Sleep', suffix: 'dreo-mode-sleep' },
+  { value: 4, name: 'Auto', suffix: 'dreo-mode-auto' },
+];
+
+const FAN_PREFERENCE_CONTROLS = [
+  {
+    name: 'Display Auto Off',
+    suffix: 'dreo-display-auto-off',
+  },
+  {
+    name: 'Panel Sound',
+    suffix: 'dreo-panel-sound',
+  },
+];
 
 /**
  * HomebridgePlatform
@@ -101,7 +122,37 @@ export class DreoPlatform implements DynamicPlatformPlugin {
     this.log.debug('\n\nDevices:\n', maskedDevices);
 
     // Create a set of UUIDs for the currently discovered devices
-    const discoveredDeviceUUIDs = new Set(dreoDevices.map(device => this.api.hap.uuid.generate(device.sn)));
+    const discoveredDeviceUUIDs = new Set<string>();
+    const exposeFanModes =
+      this.config.exposeAdvancedFanControls ||
+      this.config.exposeFanModeSwitches;
+    const exposeFanPreferences =
+      this.config.exposeAdvancedFanControls ||
+      this.config.exposeFanPreferences;
+    for (const device of dreoDevices) {
+      discoveredDeviceUUIDs.add(this.api.hap.uuid.generate(device.sn));
+      const isFan = ['DR-HTF', 'DR-HAF', 'DR-HPF', 'DR-HCF', 'DR-HAP']
+        .some(prefix => device.model.startsWith(prefix));
+      if (isFan && exposeFanModes) {
+        for (const control of FAN_MODE_CONTROLS) {
+          discoveredDeviceUUIDs.add(
+            this.api.hap.uuid.generate(`${device.sn}:${control.suffix}`),
+          );
+        }
+      }
+      if (isFan && exposeFanPreferences) {
+        for (const control of FAN_PREFERENCE_CONTROLS) {
+          discoveredDeviceUUIDs.add(
+            this.api.hap.uuid.generate(`${device.sn}:${control.suffix}`),
+          );
+        }
+      }
+      if (isFan && !this.config.hideTemperatureSensor) {
+        discoveredDeviceUUIDs.add(
+          this.api.hap.uuid.generate(`${device.sn}:dreo-temperature`),
+        );
+      }
+    }
 
     // Unregister accessories that are no longer present
     const accessoriesToRemove = this.accessories.filter(accessory => !discoveredDeviceUUIDs.has(accessory.UUID));
@@ -141,6 +192,7 @@ export class DreoPlatform implements DynamicPlatformPlugin {
         // Store a copy of the device object in the `accessory.context`
         accessory.context.device = device;
       }
+      accessory.context.device = device;
 
       // Get initial device state
       const state = await this.webHelper.getState(device.sn);
@@ -169,7 +221,7 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       ];
 
       // Find the matching prefix
-      let modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
+      const modelPrefix = SUPPORTED_MODEL_PREFIXES.find(prefix => device.model.startsWith(prefix));
 
       // Determine device type based on the matched prefix
       switch (modelPrefix) {
@@ -180,7 +232,94 @@ export class DreoPlatform implements DynamicPlatformPlugin {
         case 'DR-HAP':
           // Tower Fan, Air Circulator, Ceiling Fan, Air Purifier
           accessory.category = this.api.hap.Categories.FAN;
-          new FanAccessory(this, accessory, state);
+          {
+            const controlAccessories: FanControlAccessories = {
+              modes: new Map<number, PlatformAccessory>(),
+            };
+            const newControlAccessories: PlatformAccessory[] = [];
+            const restoredControlAccessories: PlatformAccessory[] = [];
+            const getControlAccessory = (
+              name: string,
+              suffix: string,
+              category = this.api.hap.Categories.SWITCH,
+            ) => {
+              const controlUUID = this.api.hap.uuid.generate(
+                `${device.sn}:${suffix}`,
+              );
+              let controlAccessory = this.accessories.find(
+                cachedAccessory => cachedAccessory.UUID === controlUUID,
+              );
+              if (controlAccessory) {
+                restoredControlAccessories.push(controlAccessory);
+              } else {
+                controlAccessory = new this.api.platformAccessory(
+                  name,
+                  controlUUID,
+                );
+                newControlAccessories.push(controlAccessory);
+              }
+              controlAccessory.context.parentSn = device.sn;
+              controlAccessory.category = category;
+              controlAccessory.getService(this.Service.AccessoryInformation)!
+                .setCharacteristic(this.Characteristic.Manufacturer, device.brand)
+                .setCharacteristic(this.Characteristic.Model, device.model)
+                .setCharacteristic(
+                  this.Characteristic.SerialNumber,
+                  controlUUID,
+                );
+              return controlAccessory;
+            };
+            if (
+              exposeFanModes &&
+              (state.windtype !== undefined || state.mode !== undefined)
+            ) {
+              for (const control of FAN_MODE_CONTROLS) {
+                controlAccessories.modes!.set(
+                  control.value,
+                  getControlAccessory(
+                    `${device.deviceName} ${control.name}`,
+                    control.suffix,
+                  ),
+                );
+              }
+            }
+            if (exposeFanPreferences) {
+              if (state.ledalwayson !== undefined) {
+                controlAccessories.displayAutoOff = getControlAccessory(
+                  FAN_PREFERENCE_CONTROLS[0].name,
+                  FAN_PREFERENCE_CONTROLS[0].suffix,
+                );
+              }
+              if (state.voiceon !== undefined) {
+                controlAccessories.panelSound = getControlAccessory(
+                  FAN_PREFERENCE_CONTROLS[1].name,
+                  FAN_PREFERENCE_CONTROLS[1].suffix,
+                );
+              }
+            }
+            if (
+              !this.config.hideTemperatureSensor &&
+              state.temperature !== undefined
+            ) {
+              controlAccessories.temperature = getControlAccessory(
+                'Temperature',
+                'dreo-temperature',
+                this.api.hap.Categories.SENSOR,
+              );
+            }
+
+            new FanAccessory(this, accessory, state, controlAccessories);
+            if (newControlAccessories.length > 0) {
+              this.api.registerPlatformAccessories(
+                PLUGIN_NAME,
+                PLATFORM_NAME,
+                newControlAccessories,
+              );
+            }
+            if (restoredControlAccessories.length > 0) {
+              this.api.updatePlatformAccessories(restoredControlAccessories);
+            }
+          }
           break;
 
         case 'DR-HSH':
@@ -216,6 +355,10 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       if (!existingAccessory && modelPrefix) {
         // Link accessory to the platform if model is supported
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } else if (existingAccessory && modelPrefix) {
+        // Persist services and optional characteristics added while restoring
+        // an accessory, otherwise Homebridge can keep an outdated cache.
+        this.api.updatePlatformAccessories([accessory]);
       }
     }
   }
