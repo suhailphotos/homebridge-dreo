@@ -465,6 +465,10 @@ export class FanAccessory extends BaseAccessory {
           mode.subtype,
         );
 
+      // HomeKit displays the service name for a bridged switch tile. Refresh
+      // the cached service label as well as its Name characteristic so naming
+      // migrations do not leave the old tile name behind.
+      service.displayName = modeAccessory.displayName;
       service
         .setCharacteristic(
           this.platform.Characteristic.Name,
