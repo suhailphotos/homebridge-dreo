@@ -264,9 +264,13 @@ export class DreoPlatform implements DynamicPlatformPlugin {
                 );
                 newControlAccessories.push(controlAccessory);
               }
+              // Keep plugin-provided accessory and service names current when
+              // restoring a cached accessory after a naming migration.
+              controlAccessory.displayName = name;
               controlAccessory.context.parentSn = device.sn;
               controlAccessory.category = category;
               controlAccessory.getService(this.Service.AccessoryInformation)!
+                .setCharacteristic(this.Characteristic.Name, name)
                 .setCharacteristic(this.Characteristic.Manufacturer, device.brand)
                 .setCharacteristic(this.Characteristic.Model, device.model)
                 .setCharacteristic(
