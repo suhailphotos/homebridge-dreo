@@ -65,12 +65,19 @@ Please open an issue if you have another model that works or doesn't work. If yo
 * **Fan Speed:** Fan speed is displayed as a percentage value with steps that are equivalent to those of the Dreo app. (for example, a fan with speeds 1-6 will have steps at 17%, 33%, 50% etc)
 
 * **Oscillate:** Toggles fan oscillation
-* **Auto/Manual Mode:** Uses HomeKit's native fan target-state control when the fan reports modes.
-* **Advanced Fan Controls (optional):** Exposes supported Dreo-only controls as separate, clearly named switch accessories. Named modes include Normal, Natural, Sleep, and Auto; preferences can include Display Auto Off and Panel Sound. HomeKit's native fan service remains the primary fan interface.
+* **Auto/Manual Mode:** Uses HomeKit's native fan target-state control when the fan reports modes. Manual selects Dreo Normal mode; Auto selects Dreo Auto mode.
+* **Advanced Fan Controls (optional):** Adds Natural Breeze and Sleep Mode switches plus supported preferences such as Display Auto Off and Panel Sound. Normal and Auto are not duplicated because they already map to HomeKit's native Fan Mode control.
 * **Temperature Sensor:** Displays current temperature sensor reading. (for supported devices, check your devices capabilities) Because the Dreo fan temperature sensors are not entirely accurate, you can also set a specific temperature offset for your devices.
 * **Child Lock:** Lock physical fan controls
 
-Advanced fan controls are disabled by default to keep the out-of-box Home interface clean. Enable **Expose Advanced Fan Controls** in the Homebridge plugin settings to add every control supported by the fan. Each control is published as an independent accessory with its own name, so it is unambiguous in Apple Home, automations, and Siri.
+Advanced fan controls are disabled by default to keep the out-of-box Home interface clean. Enable **Expose Advanced Fan Controls** in the Homebridge plugin settings to add the non-native controls supported by the fan. Each control is published as an independent accessory with its own name, so it is unambiguous in Apple Home, automations, and Siri.
+
+The two optional mode switches are state transitions rather than independent fan features:
+
+* **Natural Breeze:** On selects Natural mode; Off returns to Normal.
+* **Sleep Mode:** On selects Sleep mode; Off returns to Normal.
+
+Selecting either mode also turns the other mode switch off. Selecting Auto from the native Fan Mode control turns both optional switches off.
 
 Apple Home can group the controls later if desired: open a control's settings, choose **Group with Other Accessories**, and select the related controls. Grouping is managed by Apple Home and may cause the grouped tiles to share the group name; the plugin cannot assign different visible tile names inside an Apple-created group.
 

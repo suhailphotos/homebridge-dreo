@@ -60,13 +60,13 @@
         "title": "Expose Advanced Fan Controls",
         "type": "boolean",
         "default": false,
-        "description": "Expose supported Dreo fan modes and preferences as separate, clearly named switch accessories. Leave disabled for the clean native HomeKit fan interface."
+        "description": "Expose Natural Breeze, Sleep Mode, and supported Dreo preferences as separate, clearly named switch accessories. Normal and Auto remain in HomeKit's native Fan Mode control."
       },
       "exposeFanModeSwitches": {
         "title": "Expose Named Fan Modes",
         "type": "boolean",
         "default": false,
-        "description": "Legacy advanced option: expose only Normal, Natural, Sleep, and Auto as separate mutually synchronized switches."
+        "description": "Legacy advanced option: expose only Natural Breeze and Sleep Mode switches. Turning either switch off returns the fan to Normal mode."
       },
       "exposeFanPreferences": {
         "title": "Expose Fan Preferences",

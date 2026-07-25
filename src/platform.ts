@@ -11,11 +11,17 @@ import { CoolerAccessory } from './accessories/CoolerAccessory';
 import { DehumidifierAccessory } from './accessories/DehumidifierAccessory';
 import DreoAPI from './DreoAPI';
 
-const FAN_MODE_CONTROLS = [
-  { value: 1, name: 'Normal', suffix: 'dreo-mode-normal' },
-  { value: 2, name: 'Natural', suffix: 'dreo-mode-natural' },
-  { value: 3, name: 'Sleep', suffix: 'dreo-mode-sleep' },
-  { value: 4, name: 'Auto', suffix: 'dreo-mode-auto' },
+export const FAN_MODE_CONTROLS = [
+  {
+    value: 2,
+    name: 'Natural Breeze',
+    suffix: 'dreo-mode-natural',
+  },
+  {
+    value: 3,
+    name: 'Sleep Mode',
+    suffix: 'dreo-mode-sleep',
+  },
 ];
 
 const FAN_PREFERENCE_CONTROLS = [
