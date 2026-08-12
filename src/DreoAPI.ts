@@ -1,7 +1,6 @@
 import axios from 'axios';
 import MD5 from 'crypto-js/md5';
-import ReconnectingWebSocket from 'reconnecting-websocket';
-import WebSocket from 'ws';
+import DreoWebSocket from './DreoWebSocket';
 import type { DreoPlatform } from './platform';
 import type { Logger } from 'homebridge';
 
@@ -14,7 +13,7 @@ export default class DreoAPI {
   private readonly password: string;
   private readonly log: Logger;
   private access_token: string;
-  private ws: WebSocket;
+  private ws!: DreoWebSocket;
   public server: string;
 
   constructor(platform: DreoPlatform) {
@@ -122,27 +121,22 @@ export default class DreoAPI {
   // Open websocket for outgoing fan commands, websocket will auto-reconnect if a connection error occurs
   // Websocket is also used to monitor incoming state changes from hardware controls
   public async startWebSocket() {
-    // open websocket
-    const url = 'wss://wsb-'+this.server+'.dreo-tech.com/websocket?accessToken='+this.access_token+'&timestamp='+Date.now();
-    this.ws = new ReconnectingWebSocket(
-      url,
-      [],
-      {WebSocket: WebSocket});
+    this.ws = new DreoWebSocket(async (attempt) => {
+      // The URL is rebuilt for every attempt: the timestamp must be current, and the access token
+      // may have expired while we were disconnected. Re-authenticate once retries start failing.
+      if (attempt >= 2) {
+        this.log.debug('Refreshing access token before WebSocket reconnect');
+        await this.authenticate();
+      }
+      return 'wss://wsb-'+this.server+'.dreo-tech.com/websocket?accessToken='+this.access_token+'&timestamp='+Date.now();
+    }, this.log);
 
-    this.ws.addEventListener('error', error => {
-      this.log.debug('WebSocket', error);
-    });
+    this.ws.start();
+  }
 
-    this.ws.addEventListener('open', () => {
-      this.log.debug('WebSocket Opened');
-    });
-
-    this.ws.addEventListener('close', () => {
-      this.log.debug('WebSocket Closed');
-    });
-
-    // Keep connection open by sending empty packet every 15 seconds
-    setInterval(() => this.ws.send('2'), 15000);
+  // Close the websocket and stop reconnecting (called on Homebridge shutdown)
+  public stopWebSocket() {
+    this.ws?.stop();
   }
 
   // Allow devices to add event listeners to the WebSocket
