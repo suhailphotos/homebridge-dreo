@@ -35,6 +35,11 @@ export class DreoPlatform implements DynamicPlatformPlugin {
       // Run the method to discover / register your devices as accessories
       this.discoverDevices();
     });
+
+    // Close the websocket cleanly so its timers don't keep the process alive
+    this.api.on('shutdown', () => {
+      this.webHelper.stopWebSocket();
+    });
   }
 
   /**
